@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>System Monitor</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: "Courier New", monospace;
+  background: #020617;
+  color: #0ea5e9;
+  overflow: hidden;
+}
+
+/* GRID BACKGROUND */
+body::before {
+  content: "";
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(14,165,233,0.1),
+    rgba(14,165,233,0.1) 1px,
+    transparent 1px,
+    transparent 20px
+  );
+}
+
+/* LAYOUT */
+.container {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  height: 100vh;
+}
+
+/* PANELS FIXED */
+.panel {
+  border: 1px solid rgba(14,165,233,0.2);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* LOGS SCROLL */
+#logs {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+/* INPUT STAYS DOWN */
+#command {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #0ea5e9;
+  outline: none;
+  font-family: inherit;
+  border-top: 1px solid rgba(14,165,233,0.3);
+  padding-top: 8px;
+}
+
+/* CENTER */
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.reactor {
+  width: 200px;
+  height: 200px;
+  border: 2px solid #0ea5e9;
+  border-radius: 50%;
+  animation: spin 10s linear infinite;
+}
+
+.reactor::before {
+  content: "";
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border: 2px dashed orange;
+  border-radius: 50%;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ACCESS */
+.access {
+  text-align: center;
+  font-size: 24px;
+  opacity: 0;
+  transition: 0.5s;
+}
+.access.show {
+  opacity: 1;
+}
+
+/* METRICS */
+.metric { margin: 10px 0; }
+.bar { height: 10px; background: #1e293b; }
+.fill { height: 100%; background: orange; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- LEFT PANEL -->
+<div class="panel">
+  <h3>Logs</h3>
+  <div id="logs"></div>
+  <input id="command" placeholder="> type command...">
+</div>
+
+<!-- CENTER -->
+<div class="panel center">
+  <div>
+    <div class="reactor"></div>
+    <div id="access" class="access"></div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel">
+  <h3>Metrics</h3>
+
+  <div class="metric">
+    CPU
+    <div class="bar"><div class="fill" id="cpu"></div></div>
+  </div>
+
+  <div class="metric">
+    Memory
+    <div class="bar"><div class="fill" id="mem"></div></div>
+  </div>
+
+  <div class="metric">
+    Network
+    <div class="bar"><div class="fill" id="net"></div></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const logs = document.getElementById("logs");
+const input = document.getElementById("command");
+const access = document.getElementById("access");
+
+/* AUTO FOCUS */
+input.focus();
+document.addEventListener("click", () => input.focus());
+
+/* SOUND */
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+function beep() {
+  const osc = ctx.createOscillator();
+  osc.frequency.value = 800;
+  osc.connect(ctx.destination);
+  osc.start();
+  setTimeout(() => osc.stop(), 20);
+}
+
+/* LOG WITH SMART SCROLL */
+function addLog(text) {
+  const isAtBottom = logs.scrollTop + logs.clientHeight >= logs.scrollHeight - 5;
+
+  const div = document.createElement("div");
+  div.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+  logs.appendChild(div);
+
+  if (isAtBottom) {
+    logs.scrollTop = logs.scrollHeight;
+  }
+}
+
+/* AUTO LOGS */
+const msgs = ["Scanning...", "Encrypting...", "Monitoring...", "Syncing..."];
+setInterval(() => {
+  addLog(msgs[Math.floor(Math.random()*msgs.length)]);
+}, 1500);
+
+/* METRICS */
+function updateBar(id) {
+  document.getElementById(id).style.width = Math.random()*100 + "%";
+}
+setInterval(() => {
+  updateBar("cpu");
+  updateBar("mem");
+  updateBar("net");
+}, 2000);
+
+/* ACCESS */
+function showAccess(text, color) {
+  access.textContent = text;
+  access.style.color = color;
+  access.classList.add("show");
+  setTimeout(() => access.classList.remove("show"), 1500);
+}
+
+/* COMMAND SYSTEM */
+input.addEventListener("keydown", async (e) => {
+  if (e.key === "Enter") {
+    beep();
+    const cmd = input.value.toLowerCase();
+    addLog("> " + cmd);
+
+    if (cmd === "run scan") {
+      showAccess("ACCESS GRANTED", "lime");
+      addLog("Scan complete.");
+
+    } else if (cmd === "status") {
+      addLog("System stable.");
+
+    } else if (cmd === "clear") {
+      logs.innerHTML = "";
+
+    } else if (cmd === "fetch user") {
+      addLog("Fetching data...");
+      try {
+        const res = await fetch("https://randomuser.me/api/");
+        const data = await res.json();
+        addLog("User: " + data.results[0].name.first);
+      } catch {
+        addLog("Error fetching data.");
+      }
+
+    } else {
+      showAccess("ACCESS DENIED", "red");
+      addLog("Unknown command.");
+    }
+
+    input.value = "";
+  }
+});
+</script>
+
+</body>
+</html>
